@@ -1,0 +1,66 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger:
+- main
+
+pool:
+  name: Default   # your self-hosted agent pool
+
+variables:
+  IMAGE_NAME: myapp
+  IMAGE_TAG: $(Build.BuildId)
+  SBOM_DIR: sbom
+
+steps:
+# -----------------------------
+# Build Docker Image
+# -----------------------------
+- task: Bash@3
+  displayName: Docker Build
+  inputs:
+    targetType: inline
+    script: |
+      set -e
+      docker build -t $(IMAGE_NAME):$(IMAGE_TAG) .
+
+# -----------------------------
+# Install Syft (Binary, Safe)
+# -----------------------------
+- task: Bash@3
+  displayName: Install Syft
+  inputs:
+    targetType: inline
+    script: |
+      set -e
+      curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh \
+        | sh -s -- -b /usr/local/bin
+      syft version
+
+# -----------------------------
+# Generate SBOM
+# -----------------------------
+- task: Bash@3
+  displayName: Generate SBOM
+  inputs:
+    targetType: inline
+    script: |
+      set -e
+      mkdir -p $(SBOM_DIR)
+
+      syft $(IMAGE_NAME):$(IMAGE_TAG) \
+        -o spdx-json=$(SBOM_DIR)/sbom.spdx.json
+
+      syft $(IMAGE_NAME):$(IMAGE_TAG) \
+        -o cyclonedx-json=$(SBOM_DIR)/sbom.cdx.json
+
+# -----------------------------
+# Publish SBOM Artifact
+# -----------------------------
+- task: PublishPipelineArtifact@1
+  displayName: Publish SBOM
+  inputs:
+    targetPath: $(SBOM_DIR)
+    artifact: sbom
