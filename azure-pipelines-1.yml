@@ -27,19 +27,6 @@ steps:
       docker build -t $(IMAGE_NAME):$(IMAGE_TAG) .
 
 # -----------------------------
-# Install Syft (Binary, Safe)
-# -----------------------------
-- task: Bash@3
-  displayName: Install Syft
-  inputs:
-    targetType: inline
-    script: |
-      set -e
-      curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh \
-        | sh -s -- -b /usr/local/bin
-      syft version
-
-# -----------------------------
 # Generate SBOM
 # -----------------------------
 - task: Bash@3
